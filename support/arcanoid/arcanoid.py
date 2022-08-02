@@ -125,7 +125,7 @@ class Ship:
         if not Ball.alive:
             win.addch(self.y - 1, self.x, 'O')
         win.addch(self.y, self.x - self.hw, curses.ACS_LTEE)
-        for i in range(-self.hw + 1, self.hw):
+        for _ in range(-self.hw + 1, self.hw):
             win.addch(curses.ACS_HLINE)
         win.addch(curses.ACS_RTEE)
         return True
@@ -155,7 +155,7 @@ def main(stdscr):
     game.nodelay(1)
     game.keypad(1)
 
-    grid[:] = [ [ None for x in range(width + 2) ] for y in range(height + 2) ]
+    grid[:] = [[None for _ in range(width + 2)] for _ in range(height + 2)]
     wall = Wall()
     for x in range(width + 2):
         grid[0][x] = wall
@@ -177,13 +177,13 @@ def main(stdscr):
     while True:
         while select.select([ sys.stdin ], [], [], 0)[0]:
             key = game.getch()
-            if key == curses.KEY_LEFT or key == ord('a') or key == ord('A'):
+            if key in [curses.KEY_LEFT, ord('a'), ord('A')]:
                 ship.shift(-1)
-            elif key == curses.KEY_RIGHT or key == ord('d') or key == ord('D'):
+            elif key in [curses.KEY_RIGHT, ord('d'), ord('D')]:
                 ship.shift(1)
             elif key == ord(' '):
                 ship.spawn()
-            elif key == 0x1b or key == 3 or key == ord('q') or key == ord('Q'):
+            elif key in [0x1B, 3, ord('q'), ord('Q')]:
                 return
 
         game.resize(height, width)
@@ -193,7 +193,7 @@ def main(stdscr):
         status.hline(0, 0, curses.ACS_HLINE, width)
         status.addch(0, 2, curses.ACS_RTEE)
         status.addstr(' SCORE: ', curses.A_BOLD | curses.color_pair(4))
-        status.addstr('%s/%s ' % (Block.killed, Block.total), curses.A_BOLD)
+        status.addstr(f'{Block.killed}/{Block.total} ', curses.A_BOLD)
         status.addch(curses.ACS_VLINE)
         status.addstr(' DEATHS: ', curses.A_BOLD | curses.color_pair(4))
 
@@ -201,10 +201,8 @@ def main(stdscr):
         # two characters for the death count, so just display "99" if the
         # player has more than 99 deaths.
         display_deaths = Ball.killed
-        if (display_deaths > 99):
-            display_deaths = 99
-
-        status.addstr('%s ' % display_deaths, curses.A_BOLD)
+        display_deaths = min(display_deaths, 99)
+        status.addstr(f'{display_deaths} ', curses.A_BOLD)
         status.addch(curses.ACS_LTEE)
 
         if Block.killed == Block.total:
@@ -224,7 +222,9 @@ def main(stdscr):
 
 try:
     curses.wrapper(main)
-    print ('You destroyed %s blocks out of %s with %s deaths.' %
-        (Block.killed, Block.total, Ball.killed))
+    print(
+        f'You destroyed {Block.killed} blocks out of {Block.total} with {Ball.killed} deaths.'
+    )
+
 except PowerOverwhelmingException as e:
     print (e)

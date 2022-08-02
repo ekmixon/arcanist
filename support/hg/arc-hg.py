@@ -67,8 +67,7 @@ def lsmarkers(ui, repo, source=None, **opts):
     'sort_keys': True,
   }
 
-  output_file = opts.get('output')
-  if output_file:
+  if output_file := opts.get('output'):
     if os.path.exists(output_file):
       raise error.Abort(_('File "%s" already exists.' % output_file))
     with open(output_file, 'w+') as f:
@@ -91,17 +90,12 @@ def localmarkers(ui, repo):
     for head_node in branch_heads:
 
       is_active = False
-      if branch_name == current_name:
-        if head_node == active_node:
-          is_active = True
+      if branch_name == current_name and head_node == active_node:
+        is_active = True
 
       is_tip = (head_node == tip_node)
 
-      if is_closed:
-        head_closed = True
-      else:
-        head_closed = bool(head_node not in all_heads)
-
+      head_closed = True if is_closed else head_node not in all_heads
       description = repo[head_node].description()
 
       markers.append({
@@ -129,37 +123,26 @@ def localmarkers(ui, repo):
       'description': description,
     })
 
-  # Add virtual markers for the current commit state and current branch state
-  # so callers can figure out exactly where we are.
-
-  # Common cases where this matters include:
-
-  # You run "hg update 123" to update to an older revision. Your working
-  # copy commit will not be a branch head or a bookmark.
-
-  # You run "hg branch X" to create a new branch, but have not made any commits
-  # yet. Your working copy branch will not be reflected in any commits.
-
-  markers.append({
-    'type': 'branch-state',
-    'name': current_name,
-    'node': None,
-    'isActive': True,
-    'isClosed': False,
-    'isTip': False,
-    'description': None,
-  })
-
-  markers.append({
-    'type': 'commit-state',
-    'name': None,
-    'node': node.hex(active_node),
-    'isActive': True,
-    'isClosed': False,
-    'isTip': False,
-    'description': repo[b'.'].description(),
-  })
-
+  markers.extend((
+      {
+          'type': 'branch-state',
+          'name': current_name,
+          'node': None,
+          'isActive': True,
+          'isClosed': False,
+          'isTip': False,
+          'description': None,
+      },
+      {
+          'type': 'commit-state',
+          'name': None,
+          'node': node.hex(active_node),
+          'isActive': True,
+          'isClosed': False,
+          'isTip': False,
+          'description': repo[b'.'].description(),
+      },
+  ))
   return markers
 
 def remotemarkers(ui, repo, source, opts):
@@ -175,25 +158,21 @@ def remotemarkers(ui, repo, source, opts):
     branchmap = e.callcommand(b'branchmap', {}).result()
 
   for branch_name in branchmap:
-    for branch_node in branchmap[branch_name]:
-      markers.append({
+    markers.extend({
         'type': 'branch',
         'name': branch_name,
         'node': node.hex(branch_node),
         'description': None,
-      })
-
+    } for branch_node in branchmap[branch_name])
   with remote.commandexecutor() as e:
     remotemarks = bookmarks.unhexlifybookmarks(e.callcommand(b'listkeys', {
       b'namespace': b'bookmarks',
     }).result())
 
-  for mark in remotemarks:
-    markers.append({
+  markers.extend({
       'type': 'bookmark',
       'name': mark,
       'node': node.hex(remotemarks[mark]),
       'description': None,
-    })
-
+  } for mark in remotemarks)
   return markers
